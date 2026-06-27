@@ -6,6 +6,7 @@ from docx.shared import Inches
 from docx.enum.text import WD_BREAK
 from PIL import Image
 
+
 class Paragraph:
     def __init__(self, image: Image.Image = None, text: str = "", bold: bool = False, page_break: bool = False):
         self.image: Image.Image = image
@@ -14,6 +15,7 @@ class Paragraph:
         self.page_break: bool = page_break
 
     def _add_text_with_line_breaks(self, paragraph):
+        """Add this paragraph's text to a DOCX paragraph while preserving line breaks."""
         normalized_text = self.text.replace("\r\n", "\n").replace("\r", "\n")
         for idx, line in enumerate(normalized_text.split("\n")):
             if idx:
@@ -22,6 +24,7 @@ class Paragraph:
             run.bold = self.bold
     
     def to_docx_paragraph(self, document: Document):
+        """Append this paragraph as text, image, or page break to a DOCX document."""
         paragraph = document.add_paragraph()
 
         if self.page_break:
@@ -66,6 +69,7 @@ class Docx:
         self.doc: list[Paragraph] = []
 
     def _iter_run_elements(self, paragraph):
+        """Yield run XML elements from a paragraph, including hyperlink and field runs."""
         w_r = qn('w:r')
         w_hyperlink = qn('w:hyperlink')
         w_fldsimple = qn('w:fldSimple')
@@ -79,6 +83,7 @@ class Docx:
                         yield run
 
     def _run_text(self, run_element) -> str:
+        """Extract plain text, tabs, and line breaks from a run XML element."""
         texts = []
         for node in run_element.iter():
             if node.tag == qn('w:t'):
@@ -92,12 +97,14 @@ class Docx:
         return "".join(texts)
 
     def _run_has_page_break(self, run_element) -> bool:
+        """Return whether a run XML element contains a page break."""
         for node in run_element.iter():
             if node.tag == qn('w:br') and node.get(qn('w:type')) == 'page':
                 return True
         return False
 
     def _paragraph_has_page_break(self, paragraph) -> bool:
+        """Return whether a DOCX paragraph starts or contains a page break."""
         ppr = paragraph._p.find(qn('w:pPr'))
         if ppr is not None and ppr.find(qn('w:pageBreakBefore')) is not None:
             return True
@@ -107,6 +114,7 @@ class Docx:
         return False
 
     def _run_is_bold(self, run_element) -> bool:
+        """Return whether a run XML element has bold formatting enabled."""
         rpr = run_element.find(qn('w:rPr'))
         if rpr is None:
             return False
@@ -119,6 +127,7 @@ class Docx:
         return str(val).lower() not in ("0", "false", "off")
 
     def load_from_path(self, file_path: str, max_len: int):
+        """Load DOCX content into paragraph chunks capped by the given text length."""
         self.doc = []
         document = Document(file_path)
 
@@ -127,6 +136,7 @@ class Docx:
         buffer_all_bold = True
 
         def flush_buffer():
+            """Flush buffered text into the document chunk list."""
             nonlocal buffer_text, buffer_any_bold, buffer_all_bold
             if buffer_text:
                 bold_value = buffer_all_bold and buffer_any_bold
@@ -136,11 +146,13 @@ class Docx:
                 buffer_all_bold = True
 
         def append_page_break():
+            """Append a page break chunk unless the previous chunk is already one."""
             if self.doc and self.doc[-1].page_break:
                 return
             self.doc.append(Paragraph(page_break=True))
 
         def append_segment(text: str, seg_any_bold: bool, seg_all_bold: bool, new_paragraph: bool):
+            """Append text to the buffer, splitting it into max-length chunks as needed."""
             nonlocal buffer_text, buffer_any_bold, buffer_all_bold
             if not text:
                 return
@@ -186,6 +198,7 @@ class Docx:
             is_new_paragraph = bool(buffer_text)
 
             def flush_text_segment():
+                """Flush the current paragraph text segment into the shared buffer."""
                 nonlocal text_buffer, any_bold, all_bold, is_new_paragraph
                 if text_buffer:
                     segment_text = "".join(text_buffer)
@@ -243,6 +256,7 @@ class Docx:
         return self.doc
     
     def save_to_path(self, file_path: str):
+        """Save loaded paragraph chunks to a DOCX file."""
         document = Document()
         section = document.sections[0]
         section.left_margin = Inches(0.5)

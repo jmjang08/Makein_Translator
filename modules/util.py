@@ -1,6 +1,8 @@
 import os
 
+
 def load_glossary(file_path: str) -> dict:
+    """Load a two-column CSV glossary into a source-to-target term mapping."""
     # csv
     glossary = {}
     if not os.path.exists(file_path):

@@ -26,6 +26,7 @@ except ImportError as e:
     input("계속하려면 Enter 키를 누르세요...")
     exit(1)
 
+
 # Constants
 BASE_DIR = Path(__file__).resolve().parent
 GLOSSARY_PATH = BASE_DIR / "glossary.csv"
@@ -37,6 +38,7 @@ TEXT_LENGTH_LIMIT = 2048
 console = Console()
 
 def print_center(message: str) -> None:
+    """Print a Rich-renderable message centered in the console."""
     console.print(Align.center(message))
 
 QUESTIONARY_STYLE = questionary.Style([
@@ -52,12 +54,12 @@ QUESTIONARY_STYLE = questionary.Style([
     ('disabled', 'fg:#94a3b8 italic')
 ])
 
-
 class CumulativeETAColumn(ProgressColumn):
     _PLACEHOLDER = Text("/ --:-- (경과/예상)", style="bold red")
 
     @staticmethod
     def format_duration(seconds: float | int) -> str:
+        """Format a duration in seconds as MM:SS or H:MM:SS."""
         total_seconds = max(0, int(seconds))
         minutes, secs = divmod(total_seconds, 60)
         hours, minutes = divmod(minutes, 60)
@@ -66,6 +68,7 @@ class CumulativeETAColumn(ProgressColumn):
         return f"{minutes:02d}:{secs:02d}"
 
     def _estimate_total_seconds(self, task: Task) -> float | None:
+        """Estimate total task duration from completed chunks and elapsed time."""
         if not task.total or not task.completed:
             return None
 
@@ -77,14 +80,15 @@ class CumulativeETAColumn(ProgressColumn):
         return task.total * (elapsed / chunks)
 
     def render(self, task: Task) -> Text:
+        """Render the cumulative ETA column for a progress task."""
         total_estimated = self._estimate_total_seconds(task)
         if total_estimated is None:
             return self._PLACEHOLDER
 
         return Text(f"/ {self.format_duration(total_estimated)} (경과/예상)", style="bold red")
 
-
 def wait_for_exit(message: str | None = None) -> None:
+    """Show an optional completion message and wait for Enter before exiting."""
     if message:
         print_center(Panel(
             f"[bold green]{message}[/bold green]\n[dim]Enter 키를 누르면 종료합니다.[/dim]",
@@ -98,14 +102,15 @@ def wait_for_exit(message: str | None = None) -> None:
 
 
 def ensure_output_dir() -> None:
+    """Create the output directory when it does not already exist."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-
 def ensure_target_dir() -> None:
+    """Create the target directory when it does not already exist."""
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
 
-
 def get_first_target_file() -> Path | None:
+    """Return the first file in the target directory, or None if empty."""
     ensure_target_dir()
 
     target_files = sorted(TARGET_DIR.iterdir())
@@ -115,8 +120,8 @@ def get_first_target_file() -> Path | None:
 
     return target_files[0]
 
-
 def has_target_files() -> bool:
+    """Return whether the target directory contains at least one file."""
     return TARGET_DIR.exists() and any(TARGET_DIR.iterdir())
 
 def ensure_api_key() -> bool:
@@ -145,6 +150,7 @@ def ensure_api_key() -> bool:
     return True
 
 def calculate_total_paragraphs(docx: Docx, include_ad_images: bool) -> int:
+    """Count document chunks to process, optionally excluding trailing ad images."""
     if include_ad_images:
         return len(docx.doc)
 
@@ -156,7 +162,6 @@ def calculate_total_paragraphs(docx: Docx, include_ad_images: bool) -> int:
             cur = docx.doc[-ad_range]
         ad_range -= 1
     return len(docx.doc) - ad_range
-
 
 def translate(translate_images: bool, translate_ad_images: bool, thinking_level: str) -> None:
     """Translate the first DOCX file in the target directory."""
@@ -190,6 +195,7 @@ def translate(translate_images: bool, translate_ad_images: bool, thinking_level:
     ))
 
     def advance_task(task_id: int, elapsed_seconds: float | None = None) -> None:
+        """Advance progress and accumulate measured translation time."""
         task = progress.tasks[task_id]
         elapsed_increment = elapsed_seconds or 0
         progress.update(

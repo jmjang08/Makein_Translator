@@ -70,12 +70,14 @@ class Translator:
         )
     
     def _get_client(self, vertexai: bool):
+        """Build a Gemini client using the configured API key source."""
         return genai.Client(
             vertexai=vertexai,
             api_key=os.environ.get("GOOGLE_CLOUD_API_KEY") if vertexai else os.environ.get("GOOGLE_API_KEY"),
         )
     
     def set_glossary(self, glossary: dict):
+        """Convert a glossary mapping into prompt text used by translation calls."""
         if not glossary:
             self.glossary = ""
             return
@@ -85,6 +87,7 @@ class Translator:
             self.glossary += f"- {src_term} : {tgt_term}\n"
     
     def _gen_content(self, contents: list, model: str, config: types.GenerateContentConfig) -> types.GenerateContentResponse:
+        """Generate Gemini content, retrying transient quota or service errors."""
         while True:
             try:
                 res = self.client.models.generate_content(
@@ -107,6 +110,7 @@ class Translator:
                 time.sleep(5)
         
     def _gen_content_dict(self, contents: list, model: str, config: types.GenerateContentConfig) -> dict:
+        """Generate Gemini content and parse the response text as JSON."""
         while True:
             try:
                 res = self._gen_content(
@@ -120,6 +124,7 @@ class Translator:
 
     
     def translate_image(self, image: Image.Image, tgt_lang: str = "Korean") -> Image.Image:
+        """Translate text inside an image and return the translated image."""
         contents = [
             f"Is there any text present in this image? Respond with a JSON object with a boolean field 'is_text_present'.",
             image
@@ -153,16 +158,19 @@ class Translator:
         return img
     
     def _add_memory(self, text: str):
+        """Store translated text for consistency while keeping memory bounded."""
         self.memory.append(text)
         while len("\n".join(self.memory)) > self.text_length * 2:
             self.memory.pop(0)
     
     def _get_memory(self) -> str:
+        """Return the current translation memory formatted for a prompt."""
         memory_prompt = "\n".join(self.memory)
         memory_prompt = f"Translation memory (use for consistency; do not translate this memory):\n{memory_prompt}\n" if memory_prompt else ""
         return memory_prompt
 
     def translate_text(self, text: str, tgt_lang: str = "Korean") -> str:
+        """Translate a text chunk and add the result to translation memory."""
         contents = [
             "You are a professional translator.",
             self.glossary,
