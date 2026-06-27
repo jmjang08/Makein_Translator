@@ -62,7 +62,6 @@ Thumbs.db
 .env
 .env.*
 api_key.txt
-makein-500605-31807b179485.json
 
 # Output directories
 output/
