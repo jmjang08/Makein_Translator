@@ -27,18 +27,19 @@ except ImportError as e:
     exit(1)
 
 
-# Constants
+# 상수
 BASE_DIR = Path(__file__).resolve().parent
 GLOSSARY_PATH = BASE_DIR / "glossary.csv"
+API_KEY_PATH = BASE_DIR / "api_key.txt"
 TARGET_DIR = BASE_DIR / "target"
 OUTPUT_DIR = BASE_DIR / "output"
 TEXT_LENGTH_LIMIT = 2048
 
-# Initialize Console
+# 콘솔 초기화
 console = Console()
 
 def print_center(message: str) -> None:
-    """Print a Rich-renderable message centered in the console."""
+    """중앙 출력"""
     console.print(Align.center(message))
 
 QUESTIONARY_STYLE = questionary.Style([
@@ -59,7 +60,7 @@ class CumulativeETAColumn(ProgressColumn):
 
     @staticmethod
     def format_duration(seconds: float | int) -> str:
-        """Format a duration in seconds as MM:SS or H:MM:SS."""
+        """시간 형식 변환"""
         total_seconds = max(0, int(seconds))
         minutes, secs = divmod(total_seconds, 60)
         hours, minutes = divmod(minutes, 60)
@@ -68,7 +69,7 @@ class CumulativeETAColumn(ProgressColumn):
         return f"{minutes:02d}:{secs:02d}"
 
     def _estimate_total_seconds(self, task: Task) -> float | None:
-        """Estimate total task duration from completed chunks and elapsed time."""
+        """전체 시간 추정"""
         if not task.total or not task.completed:
             return None
 
@@ -80,7 +81,7 @@ class CumulativeETAColumn(ProgressColumn):
         return task.total * (elapsed / chunks)
 
     def render(self, task: Task) -> Text:
-        """Render the cumulative ETA column for a progress task."""
+        """누적 ETA 렌더링"""
         total_estimated = self._estimate_total_seconds(task)
         if total_estimated is None:
             return self._PLACEHOLDER
@@ -88,7 +89,7 @@ class CumulativeETAColumn(ProgressColumn):
         return Text(f"/ {self.format_duration(total_estimated)} (경과/예상)", style="bold red")
 
 def wait_for_exit(message: str | None = None) -> None:
-    """Show an optional completion message and wait for Enter before exiting."""
+    """종료 대기"""
     if message:
         print_center(Panel(
             f"[bold green]{message}[/bold green]\n[dim]Enter 키를 누르면 종료합니다.[/dim]",
@@ -102,15 +103,15 @@ def wait_for_exit(message: str | None = None) -> None:
 
 
 def ensure_output_dir() -> None:
-    """Create the output directory when it does not already exist."""
+    """출력 폴더 생성"""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def ensure_target_dir() -> None:
-    """Create the target directory when it does not already exist."""
+    """대상 폴더 생성"""
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
 
 def get_first_target_file() -> Path | None:
-    """Return the first file in the target directory, or None if empty."""
+    """첫 대상 파일 조회"""
     ensure_target_dir()
 
     target_files = sorted(TARGET_DIR.iterdir())
@@ -121,18 +122,30 @@ def get_first_target_file() -> Path | None:
     return target_files[0]
 
 def has_target_files() -> bool:
-    """Return whether the target directory contains at least one file."""
+    """대상 파일 존재 확인"""
     return TARGET_DIR.exists() and any(TARGET_DIR.iterdir())
 
 def ensure_api_key() -> bool:
-    """Ensure GOOGLE_CLOUD_API_KEY exists; prompt if missing."""
-    api_key = os.environ.get("GOOGLE_CLOUD_API_KEY", "").strip()
+    """API 키 확인"""
+    api_key = (
+        os.environ.get("GOOGLE_API_KEY", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+        or os.environ.get("GOOGLE_CLOUD_API_KEY", "").strip()
+    )
     if api_key:
         print_center("[green]✓ API key 확인됨[/green]")
         return True
 
+    if API_KEY_PATH.exists():
+        api_key = API_KEY_PATH.read_text(encoding="utf-8").strip()
+        if api_key:
+            os.environ["GEMINI_API_KEY"] = api_key
+            os.environ["GOOGLE_API_KEY"] = api_key
+            print_center("[green]✓ api_key.txt에서 API key 확인됨[/green]")
+            return True
+
     print_center(Panel(
-        "[bold]API Key 필요[/bold]\nGOOGLE_CLOUD_API_KEY를 입력해주세요.",
+        "[bold]API Key 필요[/bold]\nGEMINI_API_KEY를 입력하거나 api_key.txt를 만들어주세요.",
         border_style="yellow",
         expand=False
     ))
@@ -145,12 +158,13 @@ def ensure_api_key() -> bool:
         print_center("[bold red]오류:[/bold red] API Key가 입력되지 않았습니다.")
         return False
 
-    os.environ["GOOGLE_CLOUD_API_KEY"] = api_key.strip()
+    os.environ["GEMINI_API_KEY"] = api_key.strip()
+    os.environ["GOOGLE_API_KEY"] = api_key.strip()
     print_center("[green]✓ API key 설정 완료[/green]")
     return True
 
 def calculate_total_paragraphs(docx: Docx, include_ad_images: bool) -> int:
-    """Count document chunks to process, optionally excluding trailing ad images."""
+    """처리 청크 수 계산"""
     if include_ad_images:
         return len(docx.doc)
 
@@ -164,7 +178,7 @@ def calculate_total_paragraphs(docx: Docx, include_ad_images: bool) -> int:
     return len(docx.doc) - ad_range
 
 def translate(translate_images: bool, translate_ad_images: bool, thinking_level: str) -> None:
-    """Translate the first DOCX file in the target directory."""
+    """DOCX 번역"""
     target_file = get_first_target_file()
     if not target_file:
         return
@@ -195,7 +209,7 @@ def translate(translate_images: bool, translate_ad_images: bool, thinking_level:
     ))
 
     def advance_task(task_id: int, elapsed_seconds: float | None = None) -> None:
-        """Advance progress and accumulate measured translation time."""
+        """번역 시간 누적"""
         task = progress.tasks[task_id]
         elapsed_increment = elapsed_seconds or 0
         progress.update(
@@ -204,8 +218,7 @@ def translate(translate_images: bool, translate_ad_images: bool, thinking_level:
             elapsed_translation_seconds=task.fields.get("elapsed_translation_seconds", 0) + elapsed_increment,
             translated_chunks=task.fields.get("translated_chunks", 0) + 1
         )
-
-    # Processing Loop with Progress Bar
+    # 진행 루프
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -244,8 +257,7 @@ def translate(translate_images: bool, translate_ad_images: bool, thinking_level:
             start_time = time.perf_counter()
             paragraph.text = translator.translate_text(paragraph.text)
             advance_task(task_id, time.perf_counter() - start_time)
-
-    # Save Document
+    # 문서 저장
     output_filename = f"[translated] {target_file.name}"
     output_path = OUTPUT_DIR / output_filename
 
@@ -261,7 +273,7 @@ def translate(translate_images: bool, translate_ad_images: bool, thinking_level:
 
 
 def main() -> None:
-    """Entry point for the CLI UI."""
+    """CLI 진입점"""
     console.clear()
     print_center(Panel("[bold cyan]Docx 번역기 v0.1[/bold cyan]", expand=False, border_style="cyan"))
 
@@ -271,8 +283,7 @@ def main() -> None:
         print_center("종료하려면 Enter 키를 누르세요...")
         console.input(password=True)
         return
-
-    # Initial check
+    # 초기 확인
     if not has_target_files():
         print_center(
             f"[bold red]오류:[/bold red] '{TARGET_DIR}' 폴더에 번역할 파일이 없습니다.\n"
@@ -280,8 +291,7 @@ def main() -> None:
         )
         wait_for_exit()
         return
-
-    # User Selection
+    # 사용자 선택
     print_center("[bold]설정 확인[/bold]")
 
     thinking_level_sel = questionary.select(
@@ -292,7 +302,7 @@ def main() -> None:
     ).ask()
 
     if not thinking_level_sel:
-        return  # User cancelled
+        return  # 사용자 취소
     
     thinking_level = {"최소": "MINIMAL", "낮음": "LOW", "보통": "MEDIUM", "높음": "HIGH"}[thinking_level_sel]
 
@@ -306,7 +316,7 @@ def main() -> None:
     ).ask()
 
     if not action:
-        return  # User cancelled
+        return  # 사용자 취소
 
     translate_images = "✅" in action
     translate_ad_images = False
@@ -323,7 +333,7 @@ def main() -> None:
         ).ask()
 
         if not ad_action:
-            return  # User cancelled
+            return  # 사용자 취소
 
         translate_ad_images = "✅" in ad_action
     
@@ -332,8 +342,7 @@ def main() -> None:
         option_text += " / 광고 이미지 포함" if translate_ad_images else " / 광고 이미지 제외"
     print_center(f"[dim]선택된 옵션: {option_text} / 추론 수준: {thinking_level_sel}[/dim]")
     console.print()
-
-    # Start Translation
+    # 번역 시작
     translate(translate_images, translate_ad_images, thinking_level)
 
 if __name__ == "__main__":
