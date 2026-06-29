@@ -1,6 +1,6 @@
 # Makein Translator
 
-`패배 히로인이 너무 많아!` 일어판 원서를 한글로 번역하는 데 맞춰 용어집을 포함한 DOCX 번역기입니다. 이 README는 아래 원본 글의 내용을 프로젝트 사용법에 맞게 정리한 문서입니다.
+`패배 히로인이 너무 많아!` 일어판 원서를 한글로 번역하는 데 맞춰 용어집을 포함한 DOCX 번역기입니다. 이 README는 아래 원본 글의 내용을 프로젝트 사용법에 맞게 정리한 프로젝트입니다.
 
 원본 링크: <https://gall.dcinside.com/mgallery/board/view/?id=failheroine&no=24868&search_head=40&page=1>
 
@@ -73,7 +73,7 @@ GitHub를 처음 써본다면 ZIP 파일로 받는 방법이 가장 쉽습니다
 
 PowerShell에서 압축을 푼 폴더로 이동합니다.
 
-예를 들어 `다운로드` 폴더에 압축을 풀었다면:
+예를 들어 `다운로드` 폴더에 압축을 풀었다면 아래 코드를 복사해 그대로 적으세요.
 
 ```powershell
 cd $HOME\Downloads\Makein_Translator-main
@@ -82,7 +82,7 @@ cd $HOME\Downloads\Makein_Translator-main
 직접 원하는 위치에 옮겨두었다면 그 폴더 경로로 이동하면 됩니다.
 
 ```powershell
-cd C:\my_projects\makein_translator
+cd C:\my_projects\Makein_Translator
 ```
 
 ### 3. 가상환경 준비
@@ -172,9 +172,9 @@ output/
 └─ [translated] sample.docx
 ```
 
-번역 결과 예시가 궁금하다면 `docs` 폴더의 [텍스트 번역 결과](docs/result_txt.png), [이미지 번역 결과](docs/result_image.png) 파일을 참고하세요. 
+번역 결과 예시가 궁금하다면 [텍스트 번역 결과](docs/result_txt.png), [이미지 번역 결과](docs/result_image.png) 파일을 참고하세요. 
 
-패배 히로인이 너무 많아! 8권의 내용 일부가 포함되어있습니다.
+위 예시에는 패배 히로인이 너무 많아! 8권의 내용 일부가 포함되어있습니다.
 
 ## 용어집 수정 방법
 
