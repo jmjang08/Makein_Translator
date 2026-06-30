@@ -1,6 +1,6 @@
 # Makein Translator
 
-`패배 히로인이 너무 많아!` 일어판 원서를 한글로 번역하는 데 맞춰 용어집을 포함한 DOCX 번역기입니다. 이 프로젝트느느는 아래 원본 글의 내용을 다듬은 프로젝트입니다.
+`패배 히로인이 너무 많아!` 일어판 원서를 한글로 번역하는 데 맞춰 용어집을 포함한 DOCX 번역기입니다. 이 프로젝트는 아래 원본 글의 내용을 다듬은 프로젝트입니다.
 
 원본 링크: <https://gall.dcinside.com/mgallery/board/view/?id=failheroine&no=24868&search_head=40&page=1>
 
